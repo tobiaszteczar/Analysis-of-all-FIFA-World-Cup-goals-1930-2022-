@@ -1,0 +1,1 @@
+# Analysis-of-all-FIFA-World-Cup-goals-1930-2022-

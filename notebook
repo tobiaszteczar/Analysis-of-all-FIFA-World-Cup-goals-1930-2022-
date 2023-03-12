@@ -1,0 +1,76 @@
+-- Which team has scored the most goals in World Cup history?
+-- transfer of non-existent countries to heirs
+WITH FIFA_World_Cup_All_Goals_Updated_Countries AS
+(
+SELECT team_name,
+		CASE
+			WHEN team_name = 'Yugoslavia' THEN 'Serbia'
+			WHEN team_name = 'West Germany' THEN 'Germany'
+			WHEN team_name = 'East Germany' THEN 'Germany'
+			WHEN team_name = 'Soviet Union' THEN 'Russia'
+			WHEN team_name = 'Czechoslovakia' THEN 'Czech Republic'
+			ELSE team_name
+		END AS team_name_updated
+FROM FIFA_World_Cup_All_Goals fwcag
+)
+SELECT 	team_name_updated AS team,
+		COUNT(*) AS goals_scored
+FROM FIFA_World_Cup_All_Goals_Updated_Countries 
+GROUP BY team
+ORDER BY goals_scored DESC;
+
+--Who is the all-time leading goal scorer in World Cup history?
+-- Some players have only family_name, query to concatenate name and surname or surname (e.g. Ronaldo) and establish top scorer in WC
+SELECT CASE 
+			WHEN given_name = 'not applicable' THEN family_name
+			ELSE given_name || " " || family_name
+END AS identity,
+		player_team_name,
+		COUNT(*) AS goals
+FROM FIFA_World_Cup_All_Goals fwcag
+GROUP BY identity
+ORDER BY goals DESC;
+
+
+-- transforming match_period details into 2 groups & calculating percentage of goals in 1st and 2nd halfs
+WITH scoring_time AS
+(
+SELECT	CASE
+			WHEN match_period  LIKE 'first%' OR match_period  LIKE '%first%' THEN 'first half'
+			WHEN match_period  LIKE 'second%' OR match_period  LIKE '%second%' THEN 'second half'
+		END AS goal_time
+FROM FIFA_World_Cup_All_Goals fwcag
+)
+SELECT goal_time,
+		COUNT(*) AS goals_per_period,
+		COUNT(*) * 100 / SUM(COUNT(*)) OVER() AS percentage
+FROM scoring_time
+GROUP BY goal_time;
+
+-- total goals by tournament
+SELECT tournament_name,
+		COUNT(*) AS total_goals
+FROM FIFA_World_Cup_All_Goals fwcag
+GROUP BY tournament_name
+ORDER BY total_goals DESC;
+
+-- goals every 15 minutes with percentages for each tournament
+WITH scoring_time AS
+(
+SELECT	CASE
+			WHEN minute_regulation BETWEEN 0 AND 15 THEN '0 - 15'
+			WHEN minute_regulation BETWEEN 16 AND 30 THEN '16 - 30'
+			WHEN minute_regulation BETWEEN 31 AND 45 THEN '31 - 45'
+			WHEN minute_regulation BETWEEN 46 AND 60 THEN '46 - 60'
+			WHEN minute_regulation BETWEEN 61 AND 75 THEN '61 - 75'
+			WHEN minute_regulation >= 76 THEN '76 - 90'
+		END AS goal_time,
+		tournament_name
+FROM FIFA_World_Cup_All_Goals fwcag
+)
+SELECT tournament_name,
+		goal_time,
+		COUNT(*) AS goals_per_period,
+		COUNT(*) * 100 / SUM(COUNT(*)) OVER(PARTITION BY tournament_name) AS percentage
+FROM scoring_time
+GROUP BY tournament_name, goal_time;
